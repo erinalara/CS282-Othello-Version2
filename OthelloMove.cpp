@@ -8,13 +8,10 @@ bool OthelloMove::operator==(const OthelloMove& rhs) {
 }
 
 
-/*
-Converts the OthelloMove into a string representation, one that could be
-used correctly with operator=(string).
-*/
+
 OthelloMove::operator std::string() const {
 	ostringstream os;
-	os << "(" << mPosition.GetRow() << ", " << mPosition.GetCol() << ")";
+	os << "(" << int(mPosition.GetRow()) << ", " << int(mPosition.GetCol()) << ")";
 	return os.str();
 }
 
