@@ -1,4 +1,5 @@
 #include "OthelloBoard.h"
+#include <iostream>
 using namespace std;
 
 
@@ -13,78 +14,131 @@ OthelloBoard::OthelloBoard() :
 }
 
 
-/*
-Returns a vector with all possible moves on the current board state for
-the current player. The moves should be ordered based first on row, then on
-column. Example ordering: (0, 5) (0, 7) (1, 0) (2, 0) (2, 2) (7, 7)
-You cannot use a sorting method to achieve this ordering.
-
-If there are no legal moves for the current player, then a single "pass"
-OthelloMove should be the only element of the returned vector.
-*/
-/*
-
 vector<unique_ptr<OthelloMove>> OthelloBoard::GetPossibleMoves() const {
-    
-    vector<unique_ptr<OthelloMove>> list;
-    
-    for (int k = -1; k < 2; k++) {
-        for (int i = -1; i < 2; i++) {
 
-            int counter = 0, totalK = k, totalI = i;
+    vector<unique_ptr<OthelloMove>> possible;
 
-            while ((mBoard[m->mPosition.GetRow() + totalK][m->mPosition.GetCol() + totalI] != mCurrentPlayer) & (mBoard[m->mPosition.GetRow() + totalK][m->mPosition.GetCol() + totalI] != Player::EMPTY)) {
-                counter++;
-                totalK += k;
-                totalI += i;
+    for (int r = 0; r < BOARD_SIZE; r++) {
+        for (int c = 0; c < BOARD_SIZE; c++) {
 
-            }
-            if (mBoard[m->mPosition.GetRow() + totalK][m->mPosition.GetCol() + totalI] == mCurrentPlayer) {
-                while (counter != 0) {
-                    counter--;
-                    totalK -= k;
-                    totalI -= i;
-                    mBoard[m->mPosition.GetRow() + totalK][m->mPosition.GetCol() + totalI] = mCurrentPlayer;
+            if (mBoard[r][c] == Player::EMPTY) {
+
+                for (int i = 0; i < int(BoardDirection::CARDINAL_DIRECTIONS.size()); i++) {
+
+                    int counter = 0, totalK = int(BoardDirection::CARDINAL_DIRECTIONS[i].GetRowChange()), totalI = int(BoardDirection::CARDINAL_DIRECTIONS[i].GetColChange());             
+                    BoardPosition move = BoardPosition(r, c);
+
+                    while ((InBounds(BoardPosition(r + totalK, c + totalI)) && (mBoard[r + totalK][c + totalI] == Player(int(GetCurrentPlayer()) * -1)))) {
+                        counter++;
+                        totalK += BoardDirection::CARDINAL_DIRECTIONS[i].GetRowChange();
+                        totalI += BoardDirection::CARDINAL_DIRECTIONS[i].GetColChange();
+
+                    }
+
+                    if ((InBounds(BoardPosition(r + totalK, c + totalI)) && (mBoard[r + totalK][c + totalI] == GetCurrentPlayer()) & (counter != 0))) {
+                        possible.push_back(make_unique<OthelloMove>(OthelloMove(move)));
+                        break;
+                    }
+                    else {
+                        continue;
+                    }
+
                 }
             }
         }
     }
 
-}
-*/
+    return possible;
 
-/*
-Applies a valid move to the board, updating the board state accordingly.
-You may assume that this move is valid, and is consistent with the list
-of possible moves returned by GetAllMoves. Takes ownership of this move
-by placing it in the move history vector.
-*/
+}
+
+
+
+
 void OthelloBoard::ApplyMove(unique_ptr<OthelloMove> m) {
-    
-    mBoard[m->mPosition.GetRow()][m->mPosition.GetCol()] = mCurrentPlayer;
-    
-    for (int k = -1; k < 2; k++) {
-        for (int i = -1; i < 2; i++) {
 
-            int counter = 0, totalK = k, totalI = i;
+    if (!m->IsPass()) {
 
-            while ((mBoard[m->mPosition.GetRow() + totalK][m->mPosition.GetCol() + totalI] != mCurrentPlayer) & (mBoard[m->mPosition.GetRow() + totalK][m->mPosition.GetCol() + totalI] != Player::EMPTY)) {
-                counter++;
-                totalK += k;
-                totalI += i;
+        mBoard[m->mPosition.GetRow()][m->mPosition.GetCol()] = mCurrentPlayer;
+
+        for (int i = 0; i < int(BoardDirection::CARDINAL_DIRECTIONS.size()); i++) {
+            int c = 0, k = BoardDirection::CARDINAL_DIRECTIONS[i].GetRowChange(), j = BoardDirection::CARDINAL_DIRECTIONS[i].GetColChange();
+
+
+            while ((InBounds(BoardPosition(m->mPosition.GetRow() + k, m->mPosition.GetCol() + j))) && 
+                (PositionIsEnemy(BoardPosition(m->mPosition.GetRow() + k, m->mPosition.GetCol() + j), mCurrentPlayer))) {
+                c++;
+                k += int(BoardDirection::CARDINAL_DIRECTIONS[i].GetRowChange());
+                j += int(BoardDirection::CARDINAL_DIRECTIONS[i].GetColChange());
 
             }
-            if (mBoard[m->mPosition.GetRow() + totalK][m->mPosition.GetCol() + totalI] == mCurrentPlayer) {
-                while (counter != 0) {
-                    counter--;
-                    totalK -= k;
-                    totalI -= i;
-                    mBoard[m->mPosition.GetRow() + totalK][m->mPosition.GetCol() + totalI] = mCurrentPlayer;
+
+            if ((InBounds(BoardPosition(m->mPosition.GetRow() + k, m->mPosition.GetCol() + j))) && 
+                (mBoard[m->mPosition.GetRow() + k][m->mPosition.GetCol() + j] == mCurrentPlayer)) {
+                m->AddFlipSet(OthelloMove::FlipSet(c, BoardDirection(BoardDirection::CARDINAL_DIRECTIONS[i].GetRowChange(), BoardDirection::CARDINAL_DIRECTIONS[i].GetColChange())));
+
+                while (c != 0) {
+                    c--;
+                    k -= int(BoardDirection::CARDINAL_DIRECTIONS[i].GetRowChange());
+                    j -= int(BoardDirection::CARDINAL_DIRECTIONS[i].GetColChange());
+
+                    mCurrentPlayer == Player::BLACK ? mCurrentValue += 2 : mCurrentValue -= 2;
+                    mBoard[m->mPosition.GetRow() + k][m->mPosition.GetCol() + j] = mCurrentPlayer;
                 }
             }
+
         }
     }
+    mHistory.push_back(move(m));    
+    mCurrentPlayer = Player(int(mCurrentPlayer) * -1);
 }
 
 
+void OthelloBoard::UndoLastMove() {
 
+    auto& m = mHistory.back();
+
+    mBoard[m->mPosition.GetRow()][m->mPosition.GetCol()] = Player::EMPTY;
+
+
+    for (int i = 0; i < m->mFlips.size(); i++) {
+
+        int rowCh = m->mFlips[i].mDirection.GetRowChange(), colCh = m->mFlips[i].mDirection.GetColChange();
+
+
+        while ((InBounds(BoardPosition(m->mPosition.GetRow() -rowCh, m->mPosition.GetCol() - colCh))) &&
+            (!PositionIsEnemy(BoardPosition(m->mPosition.GetRow() -rowCh, m->mPosition.GetCol() - colCh), mCurrentPlayer)) &&
+            (m->mFlips[i].mFlipCount != 0)) {
+
+            mBoard[m->mPosition.GetRow() + rowCh][m->mPosition.GetCol() + colCh] = mCurrentPlayer;
+            m->mFlips[i].mFlipCount -= 1;
+            rowCh += int(m->mFlips[i].mDirection.GetRowChange());
+            colCh += int(m->mFlips[i].mDirection.GetRowChange());
+
+            mCurrentPlayer == Player::BLACK ? mCurrentValue += 2 : mCurrentValue -= 2;
+
+
+        }
+    }
+
+    mCurrentPlayer = Player(int(mCurrentPlayer) * -1);
+    mHistory.pop_back();
+
+
+}
+
+
+bool OthelloBoard::IsFinished() {
+    
+    auto& history = GetMoveHistory();
+    if (history.size() != 0) {
+        for (int i = 0; i < history.size() - 1; i++) {
+            if (history[i]->IsPass() && history[i + 1]->IsPass()) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+    
+}
