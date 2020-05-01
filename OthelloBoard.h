@@ -80,6 +80,8 @@ public:
 		return mBoard[position.GetRow()][position.GetCol()];
 	}
 
+	bool IsFinished();
+
 private:
 	// OthelloView needs access to mBoard for printing
 	friend class OthelloView;
