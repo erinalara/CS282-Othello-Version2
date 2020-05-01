@@ -45,12 +45,12 @@ bool BoardPosition::operator<(BoardPosition rhs) const {
 }
 
 bool BoardPosition::InBounds(int boardSize) {
-    return ((mRow >= 0) && (mRow <= (boardSize - 1))) && ((mCol >= 0) && (mCol <= (boardSize - 1)));
+    return ((mRow >= 0) && (mRow < (boardSize - 1))) && ((mCol >= 0) && (mCol < (boardSize - 1)));
 
 }
 
 bool BoardPosition::InBounds(int rows, int columns) {
-    return ((mRow >= 0) && (mRow <= (rows - 1))) && ((mCol >= 0) && (mCol <= (columns - 1)));
+    return (mRow >= 0 && mRow < rows) && (mCol >= 0 && (mCol < columns));
 }
 
 vector<BoardPosition> BoardPosition::GetRectangularPositions(int rows, int columns) {
